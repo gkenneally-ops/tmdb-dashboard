@@ -1,0 +1,287 @@
+---
+title: "TMDB 5000 — Exploratory Data Analysis"
+author: "Gerard Kenneally"
+date: 5/5/26
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: true
+    theme: flatly
+execute:
+  warning: false
+  message: false
+---
+
+# Overview
+
+This notebook explores the TMDB 5000 Movie Dataset to assess its
+suitability for our group project dashboard, document data quality
+issues we'll need to handle, and lock in the questions our final
+dashboard will answer.
+
+**Data source:** [TMDB 5000 Movie Dataset on Kaggle](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata)
+
+# Setup
+
+```{r}
+library(tidyverse)
+library(jsonlite)
+library(scales)
+
+# Custom theme — same one used in the Shiny dashboard
+theme_tmdb <- function(base_size = 12) {
+  theme_minimal(base_size = base_size) +
+    theme(
+      text             = element_text(family = "Helvetica", color = "#221F1F"),
+      plot.title       = element_text(face = "bold", size = base_size + 4),
+      plot.subtitle    = element_text(color = "#555555", size = base_size),
+      plot.caption     = element_text(color = "#888888", size = base_size - 2,
+                                      hjust = 0),
+      panel.grid.minor = element_blank(),
+      panel.grid.major = element_line(color = "#EEEEEE"),
+      plot.background  = element_rect(fill = "white", color = NA),
+      axis.title       = element_text(color = "#555555"),
+      legend.position  = "bottom"
+    )
+}
+
+theme_set(theme_tmdb())
+
+# Shared color palette
+palette_primary   <- "#E50914"  # signal red
+palette_secondary <- "#221F1F"  # near-black
+palette_neutral   <- "#888888"  # grey for non-data ink
+
+movies_raw  <- read_csv("data/tmdb_5000_movies.csv",  show_col_types = FALSE)
+credits_raw <- read_csv("data/tmdb_5000_credits.csv", show_col_types = FALSE)
+```
+
+# Shape
+
+How big is the data, and what variables do we have?
+
+```{r}
+dim(movies_raw)
+dim(credits_raw)
+```
+
+```{r}
+glimpse(movies_raw)
+```
+
+```{r}
+glimpse(credits_raw)
+```
+
+The movies table has `r nrow(movies_raw)` rows and `r ncol(movies_raw)`
+columns. The credits table has `r nrow(credits_raw)` rows and
+`r ncol(credits_raw)` columns. They join on `id` ↔ `movie_id`.
+
+This comfortably exceeds the project's minimum of 500 observations
+and 5 variables.
+
+# JSON-encoded columns
+
+Several columns store data as JSON-encoded strings rather than
+plain text. We'll need to parse these to use them.
+
+```{r}
+movies_raw |>
+  select(genres, keywords, production_companies, production_countries,
+         spoken_languages) |>
+  slice(1) |>
+  as.list()
+```
+
+This is going to require a parsing helper. We've handled this in
+`global.R` for the dashboard; for the EDA we'll do a quick parse here.
+
+```{r}
+parse_json_names <- function(json_string) {
+  if (is.na(json_string) || json_string == "" || json_string == "[]") {
+    return(character(0))
+  }
+  parsed <- tryCatch(fromJSON(json_string), error = function(e) NULL)
+  if (is.null(parsed) || length(parsed) == 0) return(character(0))
+  parsed$name
+}
+
+movies <- movies_raw |>
+  mutate(
+    release_date  = as.Date(release_date),
+    release_year  = as.integer(format(release_date, "%Y")),
+    decade        = (release_year %/% 10) * 10,
+    genre_names   = map(genres, parse_json_names),
+    primary_genre = map_chr(genre_names, ~ if (length(.x) > 0) .x[1] else NA_character_),
+    budget_clean  = if_else(budget  == 0, NA_real_, budget),
+    revenue_clean = if_else(revenue == 0, NA_real_, revenue),
+    profit        = revenue_clean - budget_clean,
+    roi           = revenue_clean / budget_clean
+  )
+```
+
+# Data quality
+
+## Missing values
+
+```{r}
+movies |>
+  summarize(across(c(budget, revenue, runtime, release_date,
+                     vote_average, vote_count),
+                   ~ sum(is.na(.x) | .x == 0))) |>
+  pivot_longer(everything(), names_to = "variable", values_to = "missing_or_zero") |>
+  mutate(pct = round(100 * missing_or_zero / nrow(movies), 1)) |>
+  arrange(desc(missing_or_zero))
+```
+
+The big quality issue here is that **TMDB stores unknown budget and
+revenue as `0`, not `NA`**. A lot of films in this dataset have either
+`budget == 0` or `revenue == 0`, which means "we don't know," not
+"this movie cost nothing." Any analysis involving budget, revenue,
+profit, or ROI needs to filter these out — otherwise we'll get
+nonsense.
+
+## Outliers and weirdness
+
+```{r}
+summary(movies$budget_clean)
+summary(movies$revenue_clean)
+summary(movies$runtime)
+```
+
+```{r}
+# Films with implausible runtimes
+movies |>
+  filter(runtime < 60 | runtime > 240) |>
+  select(title, runtime, release_year) |>
+  arrange(runtime)
+```
+
+# Distributions
+
+## Release year
+
+```{r}
+movies |>
+  filter(!is.na(release_year)) |>
+  ggplot(aes(x = release_year)) +
+  geom_histogram(binwidth = 5, fill = palette_primary, color = "white", linewidth = 0.3) +
+  scale_x_continuous(breaks = seq(1920, 2020, 20)) +
+  scale_y_continuous(labels = label_comma()) +
+  labs(
+    title    = "Most films in TMDB are from the last 20 years",
+    subtitle = "Distribution of films by release year, 5-year bins",
+    x        = NULL,
+    y        = "Number of films",
+    caption  = "Source: TMDB 5000 Movies dataset"
+  )
+```
+
+## Budget
+
+```{r}
+movies |>
+  filter(!is.na(budget_clean)) |>
+  ggplot(aes(x = budget_clean)) +
+  geom_histogram(bins = 40, fill = palette_primary, color = "white", linewidth = 0.3) +
+  scale_x_log10(
+    labels = label_dollar(scale_cut = cut_short_scale()),
+    breaks = c(1e3, 1e5, 1e7, 1e9)
+  ) +
+  scale_y_continuous(labels = label_comma()) +
+  labs(
+    title    = "Budget is roughly log-normal once we drop the unknowns",
+    subtitle = "Films with reported budget = 0 are excluded as missing data",
+    x        = "Budget (log scale)",
+    y        = "Number of films",
+    caption  = "Source: TMDB 5000 Movies dataset"
+  )
+```
+
+## Genre frequency
+
+```{r}
+movies |>
+  unnest(genre_names) |>
+  count(genre_names, sort = TRUE) |>
+  ggplot(aes(x = n, y = fct_reorder(genre_names, n))) +
+  geom_col(fill = palette_primary) +
+  geom_text(aes(label = label_comma()(n)), hjust = -0.2, size = 3, color = palette_secondary) +
+  scale_x_continuous(labels = label_comma(), expand = expansion(mult = c(0, 0.1))) +
+  labs(
+    title    = "Drama and comedy dominate the dataset",
+    subtitle = "Films can have multiple genre tags; counts therefore exceed 4,803",
+    x        = NULL,
+    y        = NULL,
+    caption  = "Source: TMDB 5000 Movies dataset"
+  ) +
+  theme(panel.grid.major.y = element_blank())
+```
+
+## Ratings
+
+```{r}
+movies |>
+  filter(vote_count >= 50) |>
+  ggplot(aes(x = vote_average)) +
+  geom_histogram(binwidth = 0.2, fill = palette_primary, color = "white", linewidth = 0.3) +
+  geom_vline(aes(xintercept = median(vote_average, na.rm = TRUE)),
+             color = palette_secondary, linetype = "dashed", linewidth = 0.5) +
+  annotate("text", x = 6.4, y = 350,
+           label = "Median", hjust = 1.1, size = 3, color = palette_secondary) +
+  scale_y_continuous(labels = label_comma()) +
+  labs(
+    title    = "Most films cluster around a 6.5 rating",
+    subtitle = "Films with fewer than 50 votes excluded to reduce noise",
+    x        = "Average user rating",
+    y        = "Number of films",
+    caption  = "Source: TMDB 5000 Movies dataset"
+  )
+```
+
+# Questions the dashboard will answer
+
+Based on this exploration, our dashboard will focus on the following
+questions. Each is supported by the variables present in the dataset
+and is interesting enough to motivate interactive filtering.
+
+1.  **How well does budget predict revenue, and how does the
+    relationship vary by genre?** Budget-vs-revenue scatter, colored or
+    faceted by genre, with year filter.
+
+2.  **Which genres deliver the highest typical return on investment?**
+    Median ROI by genre, with filters for decade and minimum vote count
+    to control for sample-size effects.
+
+3.  **Has movie length changed over time, and does the trend differ
+    between high-budget and low-budget films?** Runtime by release year,
+    split by budget tertile.
+
+4.  **Do critic-favored films and audience-popular films overlap, or
+    diverge?** Scatter of `vote_average` against `popularity` (or
+    `vote_count`), with hover-to-identify outliers.
+
+5.  **Which directors and actors consistently appear in profitable
+    films?** Searchable leaderboard of people-level stats, computed
+    from the parsed `cast` and `crew` columns.
+
+We'll likely cut one of these by the final dashboard if it doesn't
+hold up — five is the upper end of what one dashboard can answer well.
+
+# Ethical considerations
+
+This dataset is about commercial films and the public-figure cast and
+crew who made them, so the privacy concerns are minimal. Two issues
+worth being upfront about in the final presentation:
+
+- **Coverage bias.** TMDB is a community-maintained database and skews
+  toward English-language and Western films. Any "best of" or "most
+  successful" framing in the dashboard should be qualified — it's the
+  best of what TMDB volunteers chose to catalog, not the global film
+  industry.
+
+- **Nominal dollars.** Budgets and revenues are not adjusted for
+  inflation. A $10M budget in 1990 is not the same as $10M in 2015.
+  We'll either inflation-adjust or be explicit about this limitation
+  in the final dashboard.

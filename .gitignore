@@ -1,0 +1,21 @@
+# Data files (download from Kaggle — see README)
+data/
+
+# R-specific
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# Quarto rendered output
+*.html
+*_files/
+.quarto/
+
+# macOS
+.DS_Store
+
+# Editor / IDE
+.vscode/
+.positron/
