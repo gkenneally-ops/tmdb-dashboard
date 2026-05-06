@@ -52,6 +52,10 @@ ui <- page_sidebar(
       DTOutput("top_films_table")
     ),
     nav_panel(
+      "Critics vs. Audience",
+      plotlyOutput("critic_audience_plot", height = "550px")
+    ),
+    nav_panel(
       "About",
       uiOutput("about_panel")
     )

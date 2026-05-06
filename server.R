@@ -157,7 +157,71 @@ server <- function(input, output, session) {
                   backgroundRepeat = "no-repeat",
                   backgroundPosition = "center")
   })
-# About panel ---------------------------------------------------------------
+  # Plot: critics vs. audience -----------------------------------------------
+  output$critic_audience_plot <- renderPlotly({
+    df <- filtered_movies() |>
+      filter(!is.na(vote_average), !is.na(popularity), vote_count >= input$min_votes)
+
+    if (nrow(df) < 5) {
+      return(plotly_empty() |>
+        layout(title = list(text = "Not enough data for the current filters",
+                            font = list(family = "Helvetica", size = 16))))
+    }
+
+    # Identify "divergent" films: high rating but low popularity, or vice versa
+    # Use percentile ranks within the current filter so the labels stay relevant
+    df <- df |>
+      mutate(
+        rating_rank     = percent_rank(vote_average),
+        popularity_rank = percent_rank(popularity),
+        divergence      = rating_rank - popularity_rank,
+        category = case_when(
+          rating_rank >= 0.9 & popularity_rank >= 0.9  ~ "Universally loved",
+          rating_rank >= 0.9 & popularity_rank <= 0.5  ~ "Critic darlings",
+          rating_rank <= 0.5 & popularity_rank >= 0.9  ~ "Crowd pleasers",
+          TRUE                                          ~ "Other"
+        )
+      )
+
+    # Color the four interesting categories, mute everything else
+    category_colors <- c(
+      "Universally loved" = palette_primary,
+      "Critic darlings"   = "#1F77B4",
+      "Crowd pleasers"    = "#F5C518",
+      "Other"             = "#CCCCCC"
+    )
+
+    p <- ggplot(df, aes(
+            x    = popularity,
+            y    = vote_average,
+            color = category,
+            text = paste0(
+              "<b>", title, "</b><br>",
+              "Year: ", release_year, "<br>",
+              "Rating: ", round(vote_average, 1), " / 10<br>",
+              "Popularity: ", round(popularity, 1), "<br>",
+              "Votes: ", label_comma()(vote_count)
+            )
+          )) +
+      geom_point(alpha = 0.7, size = 1.8) +
+      scale_color_manual(values = category_colors,
+                         breaks = c("Universally loved", "Critic darlings", "Crowd pleasers"),
+                         name   = NULL) +
+      scale_x_log10(labels = label_number()) +
+      scale_y_continuous(limits = c(0, 10), breaks = seq(0, 10, 2)) +
+      labs(
+        title    = "Most films are forgettable to both critics and audiences",
+        subtitle = "Each point is a film. Highlights mark films in the top 10% of one or both axes.",
+        x        = "Popularity (log scale)",
+        y        = "Average rating",
+        caption  = "Source: TMDB 5000."
+      )
+
+    ggplotly(p, tooltip = "text") |>
+      config(displayModeBar = FALSE)
+  })
+
+  # About panel ---------------------------------------------------------------
   output$about_panel <- renderUI({
     tagList(
       h3("About this dashboard"),
