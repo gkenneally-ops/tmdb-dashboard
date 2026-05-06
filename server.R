@@ -157,4 +157,66 @@ server <- function(input, output, session) {
                   backgroundRepeat = "no-repeat",
                   backgroundPosition = "center")
   })
+# About panel ---------------------------------------------------------------
+  output$about_panel <- renderUI({
+    tagList(
+      h3("About this dashboard"),
+      p(
+        "This dashboard explores the ",
+        strong("TMDB 5000 Movie Dataset"), ", a publicly available collection ",
+        "of metadata on roughly 4,800 films sourced from ",
+        a("The Movie Database (TMDB)", href = "https://www.themoviedb.org/", target = "_blank"),
+        ", an open community-maintained film catalog. The data is distributed on ",
+        a("Kaggle", href = "https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata",
+          target = "_blank"),
+        " and covers films released through approximately 2017."
+      ),
+      h3("How to use it"),
+      p(
+        "Use the sidebar filters to narrow the dataset by release year, genre, ",
+        "and minimum vote count. The four tabs each answer a different question:"
+      ),
+      tags$ul(
+        tags$li(strong("Budget vs. Revenue:"),
+                " how reliably does spending more produce higher returns?"),
+        tags$li(strong("Genre Comparison:"),
+                " which genres deliver the highest typical return on investment?"),
+        tags$li(strong("Top Films:"),
+                " which specific films stand out within the current filter?")
+      ),
+      h3("Important caveats"),
+      tags$ul(
+        tags$li(
+          strong("Coverage bias."),
+          " TMDB is community-maintained and skews toward English-language and ",
+          "Western productions. Findings should be read as describing the films ",
+          "TMDB has cataloged, not the global film industry."
+        ),
+        tags$li(
+          strong("Missing financial data."),
+          " Budget and revenue are stored as zero when unknown, not as missing values. ",
+          "Roughly a quarter of films have unreported budget or revenue. The dashboard ",
+          "filters these out of any financial analysis to avoid distorting the results."
+        ),
+        tags$li(
+          strong("Nominal dollars."),
+          " Budget and revenue figures are not adjusted for inflation. Long-term ",
+          "comparisons across decades should be interpreted accordingly."
+        )
+      ),
+      h3("Source code and report"),
+      p(
+        "Source code, the exploratory data analysis notebook, and the written ",
+        "report are available on GitHub: ",
+        a("github.com/gkenneally-ops/tmdb-dashboard",
+          href = "https://github.com/gkenneally-ops/tmdb-dashboard",
+          target = "_blank"),
+        "."
+      ),
+     p(
+        em("Built for the Unit 3 group project. ",
+           "Created by Gerard Kenneally.")
+      )
+    )
+  })
 }

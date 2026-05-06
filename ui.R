@@ -38,7 +38,7 @@ ui <- page_sidebar(
     helpText("Filter out obscure films with very few ratings.")
   ),
 
-  navset_card_tab(
+ navset_card_tab(
     nav_panel(
       "Budget vs. Revenue",
       plotlyOutput("budget_revenue_plot", height = "500px")
@@ -50,6 +50,10 @@ ui <- page_sidebar(
     nav_panel(
       "Top Films",
       DTOutput("top_films_table")
+    ),
+    nav_panel(
+      "About",
+      uiOutput("about_panel")
     )
   )
 )
