@@ -221,6 +221,41 @@ server <- function(input, output, session) {
       config(displayModeBar = FALSE)
   })
 
+# Table: directors leaderboard --------------------------------------------
+  output$directors_table <- renderDT({
+    # Apply the same year/genre/votes filters to the directors table by joining
+    # against the filtered_movies() set
+    filtered_ids <- filtered_movies() |> pull(id)
+
+    df <- directors_long |>
+      filter(id %in% filtered_ids) |>
+      group_by(director) |>
+      summarize(
+        Films          = n(),
+        `Median Revenue` = median(revenue_clean, na.rm = TRUE),
+        `Median ROI`     = median(roi,           na.rm = TRUE),
+        `Avg Rating`     = round(mean(vote_average, na.rm = TRUE), 1),
+        .groups = "drop"
+      ) |>
+      filter(Films >= 2) |>          # require at least 2 films
+      arrange(desc(`Median Revenue`))
+
+    datatable(
+      df,
+      rownames = FALSE,
+      filter   = "top",              # adds per-column filter boxes
+      options  = list(
+        pageLength = 15,
+        scrollX    = TRUE,
+        dom        = "ftip",
+        order      = list(list(1, "desc"))   # default sort by Films
+      )
+    ) |>
+      formatCurrency(c("Median Revenue"),
+                     digits = 0, interval = 3, mark = ",") |>
+      formatRound("Median ROI", digits = 2)
+  })
+
   # About panel ---------------------------------------------------------------
   output$about_panel <- renderUI({
     tagList(
@@ -278,7 +313,7 @@ server <- function(input, output, session) {
         "."
       ),
      p(
-        em("Built for the Unit 3 group project. ",
+        em("Built for the Unit 7 group project. ",
            "Created by Gerard Kenneally.")
       )
     )

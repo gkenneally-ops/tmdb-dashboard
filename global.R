@@ -42,6 +42,27 @@ movies <- movies_raw |>
   ) |>
   filter(!is.na(release_year), status == "Released")
 
+# Build a directors-by-film table --------------------------------------------
+# crew is a JSON list of crew members per film; we want only those with job=Director.
+parse_directors <- function(crew_string) {
+  if (is.na(crew_string) || crew_string == "" || crew_string == "[]") {
+    return(character(0))
+  }
+  parsed <- tryCatch(fromJSON(crew_string), error = function(e) NULL)
+  if (is.null(parsed) || length(parsed) == 0) return(character(0))
+  if (!"job" %in% names(parsed)) return(character(0))
+  parsed$name[parsed$job == "Director"]
+}
+
+# Build a long table: one row per (film, director) pair
+directors_long <- movies |>
+  mutate(director_names = map(crew, parse_directors)) |>
+  select(id, title, release_year, vote_average, vote_count,
+         budget_clean, revenue_clean, roi, director_names) |>
+  unnest(director_names) |>
+  rename(director = director_names) |>
+  filter(!is.na(director), director != "")
+
 # Lookup vectors for UI controls ----------------------------------------------
 all_genres <- movies |>
   pull(genre_names) |>

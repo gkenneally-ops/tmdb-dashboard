@@ -56,6 +56,10 @@ ui <- page_sidebar(
       plotlyOutput("critic_audience_plot", height = "550px")
     ),
     nav_panel(
+      "Directors",
+      DTOutput("directors_table")
+    ),
+    nav_panel(
       "About",
       uiOutput("about_panel")
     )
