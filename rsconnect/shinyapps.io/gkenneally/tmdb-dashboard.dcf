@@ -1,0 +1,10 @@
+name: tmdb-dashboard
+title:
+username: gkenneally
+account: gkenneally
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 17304478
+bundleId: 11954578
+url: https://gkenneally.shinyapps.io/tmdb-dashboard/
+version: 1

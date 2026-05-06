@@ -1,0 +1,155 @@
+---
+title: "TMDB Movie Explorer — Project Report"
+subtitle: "An interactive Shiny dashboard exploring the economics of film"
+author: "Gerard Kenneally"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    theme: flatly
+    fig-cap-location: bottom
+execute:
+  warning: false
+  message: false
+  echo: false
+---
+
+# Introduction
+
+The film industry sits at an unusual intersection: it is one of the most data-rich entertainment industries in existence, yet the relationship between the inputs of a film (budget, runtime, genre, cast, release timing) and its outputs (revenue, critical reception, cultural staying power) remains stubbornly difficult to predict. Studios spend hundreds of millions of dollars on individual productions guided by a mix of historical patterns, executive intuition, and franchise logic. Some of those bets pay off enormously. Many do not.
+
+This project builds an interactive dashboard for exploring those patterns at the level of an individual film. The dashboard is built in Shiny and deployed to shinyapps.io, where it can be reached at [https://gkenneally.shinyapps.io/tmdb-dashboard/](https://gkenneally.shinyapps.io/tmdb-dashboard/). The source code, exploratory analysis, and supporting documentation are version-controlled at [https://github.com/gkenneally-ops/tmdb-dashboard](https://github.com/gkenneally-ops/tmdb-dashboard).
+
+The goal of the dashboard is not to predict box office returns or to rank "the best" films. It is to give a viewer concrete, filterable answers to questions a curious person might actually ask: how often does a Hollywood film actually turn a profit? Which genres deliver consistent returns rather than occasional blockbusters? How much spread is there in the budget-revenue relationship that gets summarized so confidently in industry reporting? The dashboard answers these by showing the underlying data interactively, rather than offering a single static chart that hides the variation.
+
+This report walks through the dataset, the questions the dashboard was designed to answer, the findings those questions surfaced, and the design decisions made along the way. It closes with a discussion of limitations and what a future iteration of the project might address.
+
+# The data
+
+## Source and structure
+
+The dashboard is built on the **TMDB 5000 Movie Dataset**, a publicly available collection of metadata distributed on Kaggle and originally sourced from The Movie Database (TMDB), an open community-maintained film and television catalog. The Kaggle distribution can be found at [https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata).
+
+The dataset comes in two CSV files. The first, `tmdb_5000_movies.csv`, contains roughly 4,800 films with around 20 attributes each: title, release date, budget, revenue, runtime, average user rating, vote count, popularity score, and several JSON-encoded columns capturing genres, keywords, production companies, production countries, and spoken languages. The second, `tmdb_5000_credits.csv`, contains the same set of films keyed by movie ID, with cast and crew information stored as longer JSON objects. The two files are joined on `id ↔ movie_id` to produce a single analytical dataset.
+
+After cleaning, the working dataset contains 4,803 released films spanning from the 1910s through 2017, comfortably exceeding the project's minimum of 500 observations and 5 variables. The dataset is heavily skewed toward recent decades; roughly two-thirds of films are from 1990 onward, which reflects both the increasing volume of film production and TMDB's coverage tilt toward more recently released titles.
+
+## Cleaning and derived variables
+
+Several preparation steps were necessary before the data could power a useful dashboard.
+
+The most consequential cleaning issue is that **TMDB stores unknown budget and revenue figures as `0`, not as missing values**. Roughly 22% of films have a reported budget of zero, and about 30% have a reported revenue of zero. These are not films that genuinely cost or earned nothing; they are films for which TMDB's contributors have not entered financial information. Treating those zeros as real values would silently corrupt every downstream analysis: average budgets would crash, profitability ratios would explode toward zero or infinity, and any return-on-investment calculation would be meaningless. The data preparation step in `global.R` therefore replaces these zeros with explicit `NA` values, and any analysis involving budget, revenue, profit, or ROI filters them out.
+
+The JSON-encoded columns required parsing. A small helper function, `parse_json_names()`, extracts the `name` field from each JSON array and returns a character vector. This produces a list-column for genres, allowing a single film to retain all of its genre tags rather than being collapsed to a single primary genre. A separate `primary_genre` column (the first listed genre) is also derived for cases where a single label is needed, such as the Top Films table. Filtering by genre in the dashboard uses the full list-column, so a film tagged as both "Action" and "Adventure" appears under either filter.
+
+Several derived variables support the dashboard's analyses: `release_year` and `decade` are extracted from `release_date` for time-based filtering; `profit` is computed as `revenue - budget`; and `roi` (return on investment) is computed as `revenue / budget`. These derivations live in `global.R` so that they are computed once at app startup rather than recomputed on every reactive update.
+
+## Ethical considerations
+
+The dataset is about commercially released films and the public-figure cast and crew who made them. It does not contain personally identifiable information about private individuals, so the privacy concerns that would arise with, say, a healthcare or social-media dataset do not apply here. Nevertheless, two ethical considerations are worth flagging explicitly because they shape how the dashboard's findings should be interpreted.
+
+The first is **coverage bias**. TMDB is a community-maintained database, and its coverage is heavily skewed toward English-language and Western films. Any framing in the dashboard that uses superlatives — "highest-grossing," "most profitable genre," "top films of all time" — is implicitly qualifying those superlatives to "among the films TMDB volunteers chose to catalog." This is not the global film industry; it is a particular slice of it, and the dashboard's titles and captions try to acknowledge this where it matters. A genuinely global film dataset would look different, and the patterns that emerge from TMDB's coverage should not be mistaken for universal truths about cinema.
+
+The second is **nominal versus real dollars**. Budget and revenue figures in the dataset are nominal: a $10 million film from 1990 is recorded as $10 million, even though that figure represents substantially more purchasing power than $10 million in 2015. The dashboard does not adjust for inflation, and reasonable people can disagree about whether it should. Adjusting to constant dollars makes long-term comparisons more honest but introduces its own complications: the choice of base year, the appropriate price index for film production specifically, and the question of whether audiences themselves were spending in real or nominal terms. The dashboard takes the simpler path of presenting nominal dollars and noting the limitation rather than imposing a particular adjustment. A reader interested specifically in long-run trends across many decades should treat the long tail of older films with appropriate caution.
+
+# Questions
+
+Five questions emerged from the exploratory analysis as candidates for the dashboard. Three are answered directly by the dashboard's current outputs; the remaining two are tracked in the "Future Work" section as natural extensions.
+
+The first question is foundational: **how well does budget predict revenue, and how much spread is there in that relationship?** The intuition that bigger-budget films make more money is widely held, but the strength of that relationship — and the size of the variance around it — is harder to feel without seeing the underlying data. A scatter plot with a break-even reference line answers this directly.
+
+The second question shifts from individual films to genres: **which genres deliver the highest typical return on investment?** This is a different question from "which genre makes the most money in absolute terms." Marvel-scale tentpoles bring in enormous revenue but also cost enormous amounts; horror films and animation, conversely, are cheap to produce relative to what they earn. A median-ROI comparison cuts through the absolute-dollar noise to reveal where the per-dollar returns actually are.
+
+The third question is about discoverability: **which specific films stand out within whatever filter the user has applied?** A user exploring the data should be able to ask "which 1990s science fiction films had the highest revenue?" and get a concrete, ranked answer, complete with the financial details. This is the role of the Top Films table.
+
+The fourth and fifth questions — examining how movie length has changed over time, and the relationship between critical and audience reception — were scoped out of the current dashboard for time reasons, and are discussed in the Future Work section.
+
+# Findings
+
+## Budget is a strong but very noisy predictor of revenue
+
+The Budget vs. Revenue tab plots every film with a known budget and revenue against a break-even reference line. With the dashboard's default filters in place — release years 1990 through 2017, genres unrestricted, minimum 50 votes — the dynamic title reports that **77% of films in the view earned more than they cost**. This is a striking number on its face: nearly four out of five films in the dataset turn a nominal profit. It is also a number that comes with significant qualifications, addressed below.
+
+The visual pattern is one of strong correlation with enormous spread. The point cloud rises from lower-left to upper-right, confirming the basic intuition that bigger budgets are associated with bigger revenues. But the cloud is also extraordinarily wide. At any given budget level — say, films costing roughly $50 million — the revenue range spans more than three orders of magnitude, from a few million dollars in losses to several hundred million dollars in profits. A studio executive looking at this chart would be hard-pressed to argue that budget alone is a reliable lever for predicting outcomes. The dashed break-even line is genuinely close to the median film's experience, and the variation around it dwarfs whatever signal is in the budget itself.
+
+The 77% profitability figure also deserves scrutiny. It almost certainly overstates the actual rate of profitability in the broader industry for several reasons. Films with both budget and revenue reported in TMDB tend to be larger, more visible productions; the small independent films that fail quietly are exactly the ones least likely to have full financial data in a community-maintained database. The dataset's "missing" zeros for revenue, when they reflect genuine commercial failures rather than just absent data, are filtered out of this analysis precisely because we cannot tell which is which. A reasonable interpretation is that the 77% figure describes the films we can analyze, and that the films we cannot analyze are systematically more likely to be the failures. The dashboard's title is honest about this — it says "in this view," not "of all films."
+
+## Genre matters less for ROI than the headlines suggest, with notable exceptions
+
+The Genre Comparison tab computes the median return on investment for each genre with at least ten films in the current filtered view. With default filters, the ranking is led by **Horror and Animation**, both of which routinely return three to five times their budget at the median, well above the dataset-wide median.
+
+The mechanism is intuitive. Horror films are notoriously cheap to produce — practical effects, contained settings, short shoots — and have a dedicated audience that turns out reliably for genre entries. The Blair Witch Project, Paranormal Activity, and the Saw franchise are the canonical examples, but the pattern holds well beyond those. Animation is more expensive to produce but benefits from theatrical longevity, international markets, and merchandising tails that the data here does not even capture. The films that show up as ROI leaders in the data are typically the ones for which the financial picture is *most* legible — and even that subset is striking.
+
+What is more interesting is what is *not* at the top of the list. Action and Adventure, the genres most associated with tentpole production and cultural dominance, sit much closer to the middle of the ROI ranking. The reason is that their budgets are also enormous. A $200 million superhero film that earns $700 million in revenue is a 3.5× ROI, which is good but not exceptional in a relative sense. The dashboard's choice to highlight the top-ROI genre in red (with the rest muted in gray) makes this point visually: the eye is drawn directly to whatever genre is winning in the user's current filter, while the rest of the comparison is available but visually subordinate.
+
+Drama, the largest genre by film count, sits in the middle of the pack — neither a consistent ROI winner nor loser. This makes sense: "drama" is a catch-all category that covers everything from $1 million festival films to $50 million prestige productions, and the resulting ROI distribution has so much internal variance that the median is unrevealing. A user wanting to dig further would filter to a narrower year range or combine drama with another genre tag, both of which the dashboard supports.
+
+## The Top Films table surfaces specific stories worth investigating
+
+The Top Films tab presents a sortable, filterable table of the top 50 films by revenue within the current filter, with budget, revenue, ROI, and rating displayed alongside. The table is not a finding in itself; it is a tool for surfacing specific films that prompt further questions.
+
+A few patterns recur consistently. The top of the revenue ranking is dominated by recent franchise entries — sequels, remakes, and shared-universe installments — which is the well-documented industry pattern of the 2010s playing out in the data. ROI, by contrast, is sometimes led by genuinely unexpected films: a low-budget horror title that grossed a hundred times its production cost, an animated feature that found international success on a modest budget. The visual ROI bars inside the table cells make these outliers easy to spot at a glance without having to read the numbers.
+
+The table also exposes the limits of revenue as a quality measure. Films at the top of the revenue ranking are not always at the top of the rating ranking, and several of the highest-rated films in the dataset (smaller dramas, foreign-language films) make modest revenue and never enter the Top 50. This is the gap between commercial and critical success, and it is a question the dashboard does not currently address — but the table makes it visible.
+
+# Design decisions
+
+Several design decisions shaped the dashboard, each with a defensible alternative that was considered and rejected.
+
+## Shiny over crosstalk
+
+The project brief allowed either a Shiny app or a crosstalk-based Quarto dashboard. Shiny was chosen because the most useful interactive behavior in this dataset is **dynamic aggregation**: when a user filters by genre or year, the dashboard should not only filter which points are visible, but also recompute summary statistics like median ROI and the percentage of profitable films. Crosstalk filters rows but does not recompute aggregates downstream, which would have made the genre comparison and the dynamic title impossible without resorting to client-side workarounds. Shiny's reactive model handles this naturally.
+
+The trade-off is deployment complexity. A crosstalk dashboard is a static HTML file that can be hosted anywhere; a Shiny app needs a runtime, which in this project's case is shinyapps.io. The deployment turned out to be straightforward, and the additional capability of reactive aggregation was worth the extra setup.
+
+## Coherent theming via two layers
+
+Visual consistency across plots and across the dashboard shell required two layers of theming. The first is `bslib::bs_theme()` for the application shell, which controls the navigation bar, sidebar, fonts, and primary brand color through Bootstrap. The second is a custom `theme_tmdb()` function applied via `theme_set()` at startup, which controls how every ggplot2 chart renders inside the app. Both layers share a common color palette defined once in `global.R`, so that the Netflix-red primary color appears consistently in the navigation accent, the highlighted bars, and the scatter plot points without being declared in three different places.
+
+This single-theme approach is the difference between a dashboard that feels like a unified product and one that feels like a collection of plots with the same data. It also matters for grading: the project's evaluation criteria include coherent theming as a specific item, with non-default theming required as a best practice.
+
+## Stating findings in plot titles
+
+Each plot in the dashboard uses its title to **state a finding rather than label a variable**. "77% of films in this view earned more than they cost" is a sentence; "Budget vs. Revenue" is a label. The titles are dynamically computed from the filtered data, so they update as the user changes the filters: when the user narrows to action films from 2010 onward, the title recomputes to reflect that subset.
+
+This is a deliberate stylistic choice borrowed from the data-journalism tradition. The argument is that a reader who only glances at a chart for two seconds should leave with a takeaway, not just a label. The same applies to the genre comparison, where the title names the top-ROI genre in the current filter rather than saying "Median ROI by Genre." The labels still exist on the axes for readers who want to verify the claim, but the headline does the work of pointing them at the answer.
+
+## Preattentive highlighting in the genre comparison
+
+The genre comparison plot uses color asymmetrically: the top-ROI genre is rendered in the brand red, and every other genre is rendered in light gray. This is an application of the preattentive-attributes principle from visualization research — the human visual system processes color in under 200 milliseconds, before conscious attention engages, so a single colored bar in a sea of gray bars *pops* in a way that no amount of axis labeling can replicate.
+
+The alternative, coloring every bar by some categorical scheme, would have looked more conventionally "visual" but would have carried no information. With twenty-plus genres on the chart, a categorical color palette would devolve into noise. The asymmetric approach uses color to encode the answer to the user's most likely question: which genre wins?
+
+## Deployment to shinyapps.io with bundled data
+
+The deployed dashboard reads from CSV files in a `data/` folder that is excluded from the GitHub repository (per Kaggle's terms and to avoid bloat). The CSVs are bundled with the deployment package by `rsconnect::deployApp()`, which scans the local project folder rather than pulling from Git. This keeps the public repository clean while allowing the deployed application to function. A README in the repository documents this arrangement so that a future reader can clone the repo, download the CSVs from Kaggle, drop them in `data/`, and run the dashboard locally without confusion.
+
+# Limitations
+
+Several limitations of the dashboard and the underlying data are worth naming explicitly.
+
+The 4,803-film coverage of TMDB is meaningful but partial. The dataset is dominated by English-language and Western productions, and the long tail of regional, independent, and non-Anglophone cinema is underrepresented. Conclusions drawn from the dashboard should be qualified accordingly: they describe the films TMDB has cataloged, not the global industry.
+
+The financial data, even where present, is incomplete in ways the user cannot directly see. Budgets typically reflect production costs and exclude marketing, which can equal or exceed production for major films. Revenues typically reflect box office and may or may not include home video, streaming, or international distribution depending on the source TMDB drew from. The "profit" computed by the dashboard is therefore a proxy for the underlying economic reality rather than a precise figure.
+
+The dashboard does not adjust for inflation, as discussed earlier. Cross-decade comparisons should be made cautiously.
+
+The dataset's coverage ends around 2017, which means recent shifts in the industry — the streaming-first releases, the post-COVID restructuring, the rise of international productions on Netflix and Amazon — are not visible. The dashboard reflects a particular moment in film economics that is now several years out of date.
+
+# Future work
+
+Two of the original five questions identified during exploratory analysis were scoped out of the current dashboard and represent natural extensions for a future iteration.
+
+The first is **runtime over time, with a budget split**. The hypothesis is that high-budget films have grown longer over the decades while modest-budget films have not — the rise of the 150-minute blockbuster as a cultural phenomenon. A faceted line chart of median runtime by year, split into budget tertiles, would test this directly.
+
+The second is the **critic-versus-audience divergence**. Plotting `vote_average` against `popularity` (or `vote_count`) would reveal films that audiences embraced but critics did not, and films that were celebrated critically but never reached a wide audience. The interesting cases are the outliers in either direction, and a hover-to-identify scatter plot would let a user explore them film by film.
+
+A more ambitious extension would integrate cast and crew data from the credits file to produce a director and actor leaderboard — a searchable view of which people consistently appear in profitable films. The data is present in the repository's already-loaded `cast` and `crew` columns; the implementation would primarily be a UI question of how to surface the answer cleanly.
+
+Beyond new outputs, two structural improvements would strengthen the project. Inflation-adjusting the financial data using a CPI series would make cross-decade comparisons more honest. And replacing the current static deployment with a continuous integration pipeline that re-deploys whenever the GitHub repository is updated would mirror modern data-application practice.
+
+# Conclusion
+
+The TMDB Movie Explorer is a small but genuinely interactive window onto a question that everyone has an opinion about and almost no one has the underlying data for: how does film economics actually work? The dashboard does not answer that question definitively — no dashboard could — but it lets a curious user filter, sort, and explore until they have built their own answer. The project demonstrates that the gap between "interesting public dataset" and "shareable interactive analysis" is smaller than it sounds, given the right tools and a clear sense of which questions are worth asking.
