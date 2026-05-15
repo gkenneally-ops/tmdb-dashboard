@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.27">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Gerard Kenneally">
+<meta name="dcterms.date" content="2026-05-14">
+
+<title>TMDB Movie Explorer — Project Report</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="report_files/libs/clipboard/clipboard.min.js"></script>
+<script src="report_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="report_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="report_files/libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="report_files/libs/quarto-html/popper.min.js"></script>
+<script src="report_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="report_files/libs/quarto-html/anchor.min.js"></script>
+<link href="report_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="report_files/libs/quarto-html/quarto-syntax-highlighting-ed96de9b727972fe78a7b5d16c58bf87.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="report_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="report_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="report_files/libs/bootstrap/bootstrap-82a8e0681529fff444bbc39736ff6b3a.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction"><span class="header-section-number">1</span> Introduction</a></li>
+  <li><a href="#the-data" id="toc-the-data" class="nav-link" data-scroll-target="#the-data"><span class="header-section-number">2</span> The data</a>
+  <ul class="collapse">
+  <li><a href="#source-and-structure" id="toc-source-and-structure" class="nav-link" data-scroll-target="#source-and-structure"><span class="header-section-number">2.1</span> Source and structure</a></li>
+  <li><a href="#cleaning-and-derived-variables" id="toc-cleaning-and-derived-variables" class="nav-link" data-scroll-target="#cleaning-and-derived-variables"><span class="header-section-number">2.2</span> Cleaning and derived variables</a></li>
+  <li><a href="#ethical-considerations" id="toc-ethical-considerations" class="nav-link" data-scroll-target="#ethical-considerations"><span class="header-section-number">2.3</span> Ethical considerations</a></li>
+  </ul></li>
+  <li><a href="#questions" id="toc-questions" class="nav-link" data-scroll-target="#questions"><span class="header-section-number">3</span> Questions</a></li>
+  <li><a href="#findings" id="toc-findings" class="nav-link" data-scroll-target="#findings"><span class="header-section-number">4</span> Findings</a>
+  <ul class="collapse">
+  <li><a href="#budget-is-a-strong-but-very-noisy-predictor-of-revenue" id="toc-budget-is-a-strong-but-very-noisy-predictor-of-revenue" class="nav-link" data-scroll-target="#budget-is-a-strong-but-very-noisy-predictor-of-revenue"><span class="header-section-number">4.1</span> Budget is a strong but very noisy predictor of revenue</a></li>
+  <li><a href="#the-best-roi-genre-depends-entirely-on-how-you-filter" id="toc-the-best-roi-genre-depends-entirely-on-how-you-filter" class="nav-link" data-scroll-target="#the-best-roi-genre-depends-entirely-on-how-you-filter"><span class="header-section-number">4.2</span> The “best ROI genre” depends entirely on how you filter</a></li>
+  <li><a href="#the-top-films-table-surfaces-specific-stories-worth-investigating" id="toc-the-top-films-table-surfaces-specific-stories-worth-investigating" class="nav-link" data-scroll-target="#the-top-films-table-surfaces-specific-stories-worth-investigating"><span class="header-section-number">4.3</span> The Top Films table surfaces specific stories worth investigating</a></li>
+  <li><a href="#critic-favored-films-and-audience-popular-films-mostly-dont-overlap" id="toc-critic-favored-films-and-audience-popular-films-mostly-dont-overlap" class="nav-link" data-scroll-target="#critic-favored-films-and-audience-popular-films-mostly-dont-overlap"><span class="header-section-number">4.4</span> Critic-favored films and audience-popular films mostly don’t overlap</a></li>
+  <li><a href="#director-level-patterns-surface-familiar-names-with-non-obvious-returns" id="toc-director-level-patterns-surface-familiar-names-with-non-obvious-returns" class="nav-link" data-scroll-target="#director-level-patterns-surface-familiar-names-with-non-obvious-returns"><span class="header-section-number">4.5</span> Director-level patterns surface familiar names with non-obvious returns</a></li>
+  </ul></li>
+  <li><a href="#design-decisions" id="toc-design-decisions" class="nav-link" data-scroll-target="#design-decisions"><span class="header-section-number">5</span> Design decisions</a>
+  <ul class="collapse">
+  <li><a href="#shiny-over-crosstalk" id="toc-shiny-over-crosstalk" class="nav-link" data-scroll-target="#shiny-over-crosstalk"><span class="header-section-number">5.1</span> Shiny over crosstalk</a></li>
+  <li><a href="#coherent-theming-via-two-layers" id="toc-coherent-theming-via-two-layers" class="nav-link" data-scroll-target="#coherent-theming-via-two-layers"><span class="header-section-number">5.2</span> Coherent theming via two layers</a></li>
+  <li><a href="#stating-findings-in-plot-titles" id="toc-stating-findings-in-plot-titles" class="nav-link" data-scroll-target="#stating-findings-in-plot-titles"><span class="header-section-number">5.3</span> Stating findings in plot titles</a></li>
+  <li><a href="#preattentive-highlighting-on-the-genre-and-critic-audience-charts" id="toc-preattentive-highlighting-on-the-genre-and-critic-audience-charts" class="nav-link" data-scroll-target="#preattentive-highlighting-on-the-genre-and-critic-audience-charts"><span class="header-section-number">5.4</span> Preattentive highlighting on the genre and critic-audience charts</a></li>
+  <li><a href="#dynamic-categories-computed-within-the-current-filter" id="toc-dynamic-categories-computed-within-the-current-filter" class="nav-link" data-scroll-target="#dynamic-categories-computed-within-the-current-filter"><span class="header-section-number">5.5</span> Dynamic categories computed within the current filter</a></li>
+  <li><a href="#deployment-to-shinyapps.io-with-bundled-data" id="toc-deployment-to-shinyapps.io-with-bundled-data" class="nav-link" data-scroll-target="#deployment-to-shinyapps.io-with-bundled-data"><span class="header-section-number">5.6</span> Deployment to shinyapps.io with bundled data</a></li>
+  </ul></li>
+  <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations"><span class="header-section-number">6</span> Limitations</a></li>
+  <li><a href="#future-work" id="toc-future-work" class="nav-link" data-scroll-target="#future-work"><span class="header-section-number">7</span> Future work</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion"><span class="header-section-number">8</span> Conclusion</a></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">TMDB Movie Explorer — Project Report</h1>
+<p class="subtitle lead">An interactive Shiny dashboard exploring the economics of film</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Gerard Kenneally </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">May 14, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="introduction" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Introduction</h1>
+<p>The film industry has always run on a mix of confident projections and deeply uncertain outcomes. Studios spend hundreds of millions of dollars on individual films, marketed with precision and tracked obsessively, but the actual relationship between what goes into a film and what comes out of it is far messier than the trade press makes it sound. A $200 million superhero movie can flop. A $5 million horror film can earn $200 million. The averages get reported; the variance rarely does.</p>
+<p>This project is a small attempt to make that variance visible. The dashboard is built in Shiny, deployed at <a href="https://gkenneally.shinyapps.io/tmdb-dashboard/">https://gkenneally.shinyapps.io/tmdb-dashboard/</a>, with source code at <a href="https://github.com/gkenneally-ops/tmdb-dashboard">https://github.com/gkenneally-ops/tmdb-dashboard</a>. It lets a user filter roughly 4,800 films from The Movie Database by year, genre, and popularity threshold, and explore six different angles on what those films looked like — financially, critically, and in terms of who made them.</p>
+<p>The goal isn’t to predict box office numbers or rank “the best” films. It’s to give someone curious about the film industry a tool to ask their own questions and see the answers in the underlying data, instead of taking a single static chart on faith. The report below walks through the dataset, the questions the dashboard was built to answer, what those questions actually surfaced once the data was filtered and plotted, the design choices made along the way, and what a future version would do differently.</p>
+</section>
+<section id="the-data" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> The data</h1>
+<section id="source-and-structure" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="source-and-structure"><span class="header-section-number">2.1</span> Source and structure</h2>
+<p>The dashboard is built on the <strong>TMDB 5000 Movie Dataset</strong>, a publicly available collection of metadata distributed on Kaggle and originally sourced from The Movie Database (TMDB), an open community-maintained film and television catalog. The data can be downloaded at <a href="https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata">https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata</a>.</p>
+<p>The dataset comes in two CSV files. The first, <code>tmdb_5000_movies.csv</code>, contains roughly 4,800 films with around 20 attributes each: title, release date, budget, revenue, runtime, average user rating, vote count, popularity score, and several JSON-encoded columns capturing genres, keywords, production companies, production countries, and spoken languages. The second, <code>tmdb_5000_credits.csv</code>, contains the same set of films keyed by movie ID, with cast and crew information stored as longer JSON objects. The two files are joined on <code>id ↔︎ movie_id</code> to produce a single working dataset.</p>
+<p>After cleaning, the analysis dataset contains 4,803 released films spanning from the 1910s through 2017 — comfortably above the project’s minimum of 500 observations and 5 variables. The dataset is heavily skewed toward more recent decades; about two-thirds of the films are from 1990 onward, which reflects both the increasing volume of film production and TMDB’s coverage tilt toward more recent titles.</p>
+</section>
+<section id="cleaning-and-derived-variables" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="cleaning-and-derived-variables"><span class="header-section-number">2.2</span> Cleaning and derived variables</h2>
+<p>Several preparation steps were necessary before the data could power a useful dashboard.</p>
+<p>The most consequential issue is that <strong>TMDB stores unknown budget and revenue figures as <code>0</code>, not as missing values</strong>. A substantial fraction of films in the dataset — roughly a quarter — have a reported budget or revenue of zero. These aren’t films that genuinely cost or earned nothing; they’re films for which TMDB’s contributors haven’t entered financial information. Treating those zeros as real values would corrupt every downstream analysis: average budgets would crash, ROI calculations would explode toward zero or infinity, and the headline numbers in the dashboard would be meaningless. The data preparation step in <code>global.R</code> therefore replaces these zeros with explicit <code>NA</code> values, and any analysis involving budget, revenue, profit, or ROI filters them out.</p>
+<p>The JSON-encoded columns required parsing. A small helper function, <code>parse_json_names()</code>, extracts the <code>name</code> field from each JSON array and returns a character vector. This produces a list-column for genres, allowing a single film to retain all of its genre tags rather than being collapsed to a single primary one. A separate <code>primary_genre</code> column (the first listed genre) is also derived for cases where a single label is needed, like the Top Films table. Filtering by genre in the dashboard uses the full list-column, so a film tagged as both “Action” and “Adventure” appears under either filter.</p>
+<p>A second helper, <code>parse_directors()</code>, walks the <code>crew</code> JSON column and pulls out only the entries where <code>job == "Director"</code>. The crew column lists every credited person on each film — gaffers, set decorators, second unit directors, the works — and most of them aren’t useful for a leaderboard. Filtering on the job field cleans that up. The result is a long table with one row per film-director pair, which the Directors tab aggregates back up to the person level.</p>
+<p>Several derived variables support the dashboard’s analyses: <code>release_year</code> and <code>decade</code> from <code>release_date</code> for time-based filtering, <code>profit</code> as <code>revenue − budget</code>, and <code>roi</code> as <code>revenue / budget</code>. These all live in <code>global.R</code> so they’re computed once at app startup rather than recalculated on every reactive update.</p>
+</section>
+<section id="ethical-considerations" class="level2" data-number="2.3">
+<h2 data-number="2.3" class="anchored" data-anchor-id="ethical-considerations"><span class="header-section-number">2.3</span> Ethical considerations</h2>
+<p>The dataset is about commercially released films and the public-figure cast and crew who made them. It doesn’t contain personally identifiable information about private individuals, so the privacy concerns that would apply to, say, a healthcare or social-media dataset don’t really apply here. That said, two ethical considerations are worth flagging because they shape how the dashboard’s findings should be read.</p>
+<p>The first is <strong>coverage bias</strong>. TMDB is a community-maintained database, and its coverage skews heavily toward English-language and Western films. Any framing in the dashboard that uses superlatives — “highest-grossing,” “most profitable genre,” “top films” — is implicitly qualifying those superlatives to “among the films TMDB volunteers chose to catalog.” This is not the global film industry; it’s a particular slice of it, and the dashboard’s titles and About tab try to acknowledge this. A genuinely global film dataset would look different, and the patterns the dashboard surfaces shouldn’t be mistaken for universal truths about cinema.</p>
+<p>The second is <strong>nominal versus real dollars</strong>. Budget and revenue figures in the dataset are nominal: a $10 million film from 1990 is recorded as $10 million, even though that figure represents substantially more purchasing power than $10 million in 2015. The dashboard doesn’t adjust for inflation, and reasonable people can disagree about whether it should. Adjusting to constant dollars makes long-term comparisons more honest but introduces its own complications: the choice of base year, the right price index for film production specifically, and the question of whether audiences themselves were spending in nominal or real terms. The dashboard takes the simpler path of presenting nominal dollars and flagging the limitation rather than imposing a particular adjustment. A reader interested specifically in long-run trends across many decades should treat the long tail of older films with appropriate caution.</p>
+</section>
+</section>
+<section id="questions" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Questions</h1>
+<p>Five questions emerged from the exploratory analysis as candidates for the dashboard. The current dashboard answers all five, distributed across six tabs (the About tab being the sixth, providing context rather than analysis).</p>
+<p>The first question is foundational: <strong>how well does budget predict revenue, and how much spread is there in that relationship?</strong> The intuition that bigger-budget films make more money is widely held, but the strength of that relationship — and the size of the variance around it — is hard to feel without seeing the underlying data. A scatter plot with a break-even reference line answers this directly.</p>
+<p>The second question shifts from individual films to genres: <strong>which genres deliver the highest typical return on investment?</strong> This is a different question from “which genre makes the most money in absolute terms.” Marvel-scale tentpoles bring in enormous revenue but also cost enormous amounts; horror films and animation, conversely, tend to be cheap to produce relative to what they earn. A median-ROI comparison cuts through the absolute-dollar noise to reveal where the per-dollar returns actually are.</p>
+<p>The third question is about discoverability: <strong>which specific films stand out within whatever filter the user has applied?</strong> Someone exploring the data should be able to ask “which 1990s science fiction films had the highest revenue?” and get a concrete, ranked answer, with the financial details. This is the role of the Top Films table.</p>
+<p>The fourth question is about reception: <strong>do critic-favored films and audience-popular films overlap, or diverge?</strong> The two measures are often discussed as if they’re proxies for each other — popular films are good, niche films aren’t — but a scatter plot should show how often that’s actually true. A single chart with rating on one axis and popularity on the other separates the films audiences and critics both love from the films one camp embraces and the other ignores.</p>
+<p>The fifth question puts people on screen instead of films: <strong>which directors consistently appear in profitable films?</strong> The dataset already contains the credit information; the question is whether aggregating it to the director level surfaces patterns worth seeing. A sortable, filterable leaderboard answers it.</p>
+</section>
+<section id="findings" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Findings</h1>
+<section id="budget-is-a-strong-but-very-noisy-predictor-of-revenue" class="level2" data-number="4.1">
+<h2 data-number="4.1" class="anchored" data-anchor-id="budget-is-a-strong-but-very-noisy-predictor-of-revenue"><span class="header-section-number">4.1</span> Budget is a strong but very noisy predictor of revenue</h2>
+<p>The Budget vs.&nbsp;Revenue tab plots every film with a known budget and revenue against a break-even reference line. The dynamic title computes the percentage of films in the current filter that earned more than they cost, and that number is striking depending on how the user has filtered. With the minimum-vote slider set high — say, 2,100 votes or more, which restricts the view to films that have actually been seen by a meaningful audience — the headline reads <strong>“99% of films in this view earned more than they cost.”</strong> With the slider at the default 50 votes, the figure is closer to 77%.</p>
+<p>That gap is itself the finding. The 99% number isn’t because almost every film is profitable; it’s because the films <em>visible enough to attract thousands of votes</em> are heavily biased toward commercial success. The films that fail quietly, by definition, also tend to fail to accumulate ratings on TMDB. The dashboard’s filter exposes this selection effect rather than hiding it: dragging the minimum-vote slider from low to high doesn’t just change the chart density, it changes the answer to “are most films profitable?” That’s a more honest answer than any single number could give.</p>
+<p>The visual pattern, regardless of filter, is one of strong correlation with enormous spread. The point cloud rises from lower-left to upper-right, confirming the basic intuition that bigger budgets are associated with bigger revenues. But the cloud is also extraordinarily wide. At any given budget level, the revenue range spans more than three orders of magnitude. A studio executive looking at the chart would be hard-pressed to argue that budget alone is a reliable predictor of outcomes. The dashed break-even line is genuinely close to the median film’s experience, and the variation around it dwarfs whatever signal is in the budget itself.</p>
+</section>
+<section id="the-best-roi-genre-depends-entirely-on-how-you-filter" class="level2" data-number="4.2">
+<h2 data-number="4.2" class="anchored" data-anchor-id="the-best-roi-genre-depends-entirely-on-how-you-filter"><span class="header-section-number">4.2</span> The “best ROI genre” depends entirely on how you filter</h2>
+<p>The Genre Comparison tab computes the median return on investment for each genre with at least ten films in the current filtered view, and highlights the top genre in red while muting the rest in gray. The interesting thing about this chart is that <strong>the answer changes substantially depending on the filter</strong>. With certain filter settings the leader is <strong>Romance</strong>; with others it’s <strong>Horror</strong>, <strong>Animation</strong>, or <strong>Family</strong>. Drag the year range earlier or set a higher minimum vote count and the ranking shuffles.</p>
+<p>Horror’s strong median ROI when it ranks highly is the most well-documented pattern — the genre is cheap to produce, has a dedicated audience, and movies like the Saw franchise, Paranormal Activity, and The Blair Witch Project regularly return many multiples of their budgets. Animation benefits from a different structure: theatrical longevity, international markets, and merchandising tails that the data here doesn’t even capture. When Romance wins, it’s usually because films like Twilight or specific sleeper hits drag the median up despite a smaller film count.</p>
+<p>What’s <em>not</em> at the top of the ROI ranking, in any filter setting, is what’s most interesting. Action and Adventure — the genres most associated with tentpole production and cultural dominance — sit closer to the middle. The reason is that their budgets are also enormous. A $200 million superhero film that earns $700 million is a 3.5× ROI, which is good but not exceptional in a relative sense. The dashboard’s choice to highlight only the top genre in the brand red, with everything else muted, makes the answer to “which genre wins?” pop preattentively while still letting the user verify the rest of the ranking on the same chart.</p>
+<p>Drama, the largest genre by film count, sits in the middle of the pack regardless of filter. That makes sense: “drama” is a catch-all category that covers everything from $1 million festival films to $50 million prestige productions, and the resulting ROI distribution has so much internal variance that the median is unrevealing.</p>
+</section>
+<section id="the-top-films-table-surfaces-specific-stories-worth-investigating" class="level2" data-number="4.3">
+<h2 data-number="4.3" class="anchored" data-anchor-id="the-top-films-table-surfaces-specific-stories-worth-investigating"><span class="header-section-number">4.3</span> The Top Films table surfaces specific stories worth investigating</h2>
+<p>The Top Films tab presents a sortable table of the top 50 films by revenue within the current filter, with budget, revenue, ROI, and rating displayed for each. The table isn’t a finding in itself — it’s a tool for surfacing specific films that prompt further questions.</p>
+<p>A few patterns recur. The top of the revenue ranking is dominated by recent franchise entries: Avatar, Titanic, The Avengers, Jurassic World, Furious 7, Avengers: Age of Ultron, Frozen, Iron Man 3, Minions, Captain America: Civil War. That’s the well-documented industry pattern of the 2010s playing out in the data — sequels, remakes, and shared-universe installments dominating the box office. ROI tells a different story: Minions stands out with a 15.6× return on a $74 million budget, well above the bigger-budget Marvel and DC entries that earn more in absolute terms but spend more to do it. The visual ROI bars inside each row (a horizontal red bar that fills proportionally) make these outliers easy to spot at a glance without having to read the numbers.</p>
+<p>The table also exposes the limits of revenue as a quality measure. Films at the top of the revenue ranking aren’t necessarily at the top of the rating ranking, and several of the highest-rated films in the dataset never enter the Top 50 by revenue. That gap between commercial and critical success is exactly what the next tab addresses.</p>
+</section>
+<section id="critic-favored-films-and-audience-popular-films-mostly-dont-overlap" class="level2" data-number="4.4">
+<h2 data-number="4.4" class="anchored" data-anchor-id="critic-favored-films-and-audience-popular-films-mostly-dont-overlap"><span class="header-section-number">4.4</span> Critic-favored films and audience-popular films mostly don’t overlap</h2>
+<p>The Critics vs.&nbsp;Audience tab plots every filtered film with average rating on the y-axis and popularity score on the x-axis (log-scaled, since popularity is heavily right-skewed). Films are highlighted into three categories using percentile ranks within the current filter: <strong>Universally loved</strong> (top 10% on both axes, in red), <strong>Critic darlings</strong> (top 10% rating, bottom 50% popularity, in blue), and <strong>Crowd pleasers</strong> (top 10% popularity, bottom 50% rating, in yellow). The vast majority of films, in gray, sit in the middle on both dimensions.</p>
+<p>The headline finding is that <strong>most films are forgettable to both critics and audiences</strong>. The grey cloud is dense and centered around a 6/10 rating with middling popularity. That’s not a flaw in the data; it’s a fact about the population of commercially released films.</p>
+<p>The smaller categories are more interesting. The red dots — universally loved — are rare and worth hovering over: these are the films that genuinely punched through on both metrics, which tends to mean cultural touchstones rather than just hits. The blue dots, critic darlings, are concentrated in the upper-middle of the chart: highly rated but never reached a wide audience. Many of these are smaller dramas or foreign-language films. The yellow dots, crowd pleasers, sit in the lower-right: enormously popular but rated 5-6 out of 10. These are the films audiences turned out for despite mediocre reviews — often big-budget action or franchise entries with name recognition that exceeds quality.</p>
+<p>The chart genuinely answers the original question. Critic favor and audience popularity <em>do</em> sometimes overlap — but the overlap is small enough that treating one as a proxy for the other would be misleading. Most of the action is in the off-diagonal categories.</p>
+</section>
+<section id="director-level-patterns-surface-familiar-names-with-non-obvious-returns" class="level2" data-number="4.5">
+<h2 data-number="4.5" class="anchored" data-anchor-id="director-level-patterns-surface-familiar-names-with-non-obvious-returns"><span class="header-section-number">4.5</span> Director-level patterns surface familiar names with non-obvious returns</h2>
+<p>The Directors tab aggregates the credit data to the person level, showing each director’s film count, median revenue, median ROI, and average rating across films in the current filter. With default filters, the top of the list by median revenue is led by <strong>Steven Spielberg</strong> (9 films, ~$358M median revenue, 4.48× ROI, 7.1 average rating), followed by <strong>Peter Jackson</strong>, <strong>Christopher Nolan</strong>, and <strong>Quentin Tarantino</strong>.</p>
+<p>The names are the names you’d expect. The numbers are slightly less obvious. Spielberg’s nearly $360 million median is the kind of figure that gets associated with blockbusters, but his 4.48× ROI is solid rather than spectacular — his films cost a lot to make. Tarantino, working on smaller budgets with a distinctive auteur brand, has a higher median ROI of 5.07× despite a much lower median revenue. Christopher Nolan combines high revenue with a strong critical average (7.9), which is unusual at his budget level.</p>
+<p>The leaderboard also surfaces names that don’t match the popular-culture image of “successful director” but show up clearly in the data. Chris Columbus and Michael Bay both deliver consistent commercial returns despite being less culturally celebrated than Nolan or Tarantino. Bay’s films average a 6.2 rating and a 5.20× ROI — exactly the gap between critical and commercial success that the previous tab visualized at the film level.</p>
+<p>The director-level view is genuinely additive to the film-level analysis. A franchise-driven blockbuster era can make individual films look interchangeable, but the people behind the camera aren’t, and the data shows it.</p>
+</section>
+</section>
+<section id="design-decisions" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Design decisions</h1>
+<p>Several decisions shaped the dashboard, each with a defensible alternative that was considered and rejected.</p>
+<section id="shiny-over-crosstalk" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="shiny-over-crosstalk"><span class="header-section-number">5.1</span> Shiny over crosstalk</h2>
+<p>The project brief allowed either a Shiny app or a crosstalk-based Quarto dashboard. Shiny was chosen because the most useful interactive behavior in this dataset is <strong>dynamic aggregation</strong>: when a user filters by genre or year, the dashboard should not only filter which points are visible, but also recompute summary statistics like median ROI and the percentage of profitable films. Crosstalk filters rows but doesn’t recompute aggregates downstream, which would have made the dynamic titles and the genre comparison impossible without ugly client-side workarounds. Shiny’s reactive model handles all of this naturally.</p>
+<p>The trade-off is deployment complexity. A crosstalk dashboard is a static HTML file that can be hosted anywhere; a Shiny app needs a runtime, which in this project’s case is shinyapps.io. The deployment turned out to be straightforward, and the additional capability of reactive aggregation was worth the extra setup.</p>
+</section>
+<section id="coherent-theming-via-two-layers" class="level2" data-number="5.2">
+<h2 data-number="5.2" class="anchored" data-anchor-id="coherent-theming-via-two-layers"><span class="header-section-number">5.2</span> Coherent theming via two layers</h2>
+<p>Visual consistency across plots and across the dashboard shell required two layers of theming. The first is <code>bslib::bs_theme()</code> for the application shell, which controls the navigation bar, sidebar, fonts, and primary brand color through Bootstrap. The second is a custom <code>theme_tmdb()</code> function applied via <code>theme_set()</code> at startup, which controls how every ggplot2 chart renders inside the app. Both layers share a common color palette defined once in <code>global.R</code>, so the same red appears consistently in the navigation accent, the highlighted bars, and the scatter plot points without being declared in three different places.</p>
+<p>This single-theme approach is the difference between a dashboard that feels like a unified product and one that feels like a collection of plots with the same data behind them. It also matters for grading: the project’s evaluation criteria include coherent theming as a specific item, with non-default theming required as a best practice.</p>
+</section>
+<section id="stating-findings-in-plot-titles" class="level2" data-number="5.3">
+<h2 data-number="5.3" class="anchored" data-anchor-id="stating-findings-in-plot-titles"><span class="header-section-number">5.3</span> Stating findings in plot titles</h2>
+<p>Each plot in the dashboard uses its title to <strong>state a finding rather than label a variable</strong>. “99% of films in this view earned more than they cost” is a sentence with a takeaway; “Budget vs.&nbsp;Revenue” is just a label. The titles are dynamically computed from the filtered data, so they update as the user changes the filters: when the user narrows to action films from 2010 onward, the title recomputes to reflect that subset.</p>
+<p>This is a deliberate choice borrowed from the data-journalism tradition. The argument is that a reader who only glances at a chart for two seconds should leave with a takeaway, not just a label. The same logic applies to the genre comparison, where the title names the top-ROI genre in the current filter. Axes still exist for readers who want to verify the claim, but the headline does the work of pointing them at the answer.</p>
+</section>
+<section id="preattentive-highlighting-on-the-genre-and-critic-audience-charts" class="level2" data-number="5.4">
+<h2 data-number="5.4" class="anchored" data-anchor-id="preattentive-highlighting-on-the-genre-and-critic-audience-charts"><span class="header-section-number">5.4</span> Preattentive highlighting on the genre and critic-audience charts</h2>
+<p>The genre comparison plot uses color asymmetrically: the top-ROI genre is rendered in the brand red, every other genre in light gray. This is an application of the preattentive-attributes principle — the human visual system processes color in under 200 milliseconds, before conscious attention engages, so a single colored bar in a sea of gray bars <em>pops</em> in a way no amount of axis labeling can replicate.</p>
+<p>The critic-vs-audience scatter applies a related logic: most of the cloud is gray, with three named categories highlighted in distinct colors that correspond to interesting positions in the data (red for universally loved, blue for critic darlings, yellow for crowd pleasers). The categorical color choice here is doing real work — it’s encoding <em>which kind of outlier</em> a film is, not just labeling that it’s an outlier — and the muted gray for everything else keeps the comparison focused.</p>
+<p>The alternative on either chart, coloring every point or bar by some categorical scheme, would have looked more conventionally “visual” but would have carried no information. With twenty-plus genres or thousands of films on screen, a full categorical palette would devolve into noise.</p>
+</section>
+<section id="dynamic-categories-computed-within-the-current-filter" class="level2" data-number="5.5">
+<h2 data-number="5.5" class="anchored" data-anchor-id="dynamic-categories-computed-within-the-current-filter"><span class="header-section-number">5.5</span> Dynamic categories computed within the current filter</h2>
+<p>A subtle but important design decision is that the percentile-rank categories on the critic-vs-audience scatter — top 10% rating, top 10% popularity, bottom 50% — are computed <em>within the current filter</em>, not against the global dataset. If a user filters to comedies from the 1990s, the “universally loved” comedies are the ones in the top 10% of <em>that subset</em>, not the top 10% of all films ever.</p>
+<p>This is the right choice for a discovery tool. Computing against the global dataset would mean that filtering to a narrow slice would produce a chart with no highlighted points (because none of the niche films would clear the global thresholds). Recomputing within the filter keeps the chart useful at any zoom level.</p>
+</section>
+<section id="deployment-to-shinyapps.io-with-bundled-data" class="level2" data-number="5.6">
+<h2 data-number="5.6" class="anchored" data-anchor-id="deployment-to-shinyapps.io-with-bundled-data"><span class="header-section-number">5.6</span> Deployment to shinyapps.io with bundled data</h2>
+<p>The deployed dashboard reads from CSV files in a <code>data/</code> folder that is excluded from the GitHub repository (per Kaggle’s terms and to keep the repo small). The CSVs are bundled with the deployment package by <code>rsconnect::deployApp()</code>, which scans the local project folder rather than pulling from Git. This keeps the public repository clean while allowing the deployed application to function. The README documents this arrangement so a future reader can clone the repo, download the CSVs from Kaggle, drop them in <code>data/</code>, and run the dashboard locally.</p>
+</section>
+</section>
+<section id="limitations" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> Limitations</h1>
+<p>Several limitations of the dashboard and the underlying data are worth naming explicitly.</p>
+<p>The 4,803-film coverage of TMDB is meaningful but partial. The dataset is dominated by English-language and Western productions, and the long tail of regional, independent, and non-Anglophone cinema is underrepresented. Conclusions drawn from the dashboard should be qualified accordingly: they describe the films TMDB has cataloged, not the global industry.</p>
+<p>The financial data, even where present, is incomplete in ways the user can’t directly see. Budgets typically reflect production costs and exclude marketing, which can equal or exceed production for major films. Revenues typically reflect box office and may or may not include home video, streaming, or international distribution depending on the source TMDB drew from. The “profit” computed by the dashboard is therefore a proxy for the underlying economic reality rather than a precise figure.</p>
+<p>The dashboard doesn’t adjust for inflation, as discussed earlier. Cross-decade comparisons should be made cautiously.</p>
+<p>The dataset’s coverage ends around 2017, which means recent shifts in the industry — the streaming-first releases, the post-COVID restructuring, the rise of international productions on Netflix and Amazon — aren’t visible. The dashboard reflects a particular moment in film economics that’s now several years out of date.</p>
+<p>Finally, the director leaderboard treats all directing credits equally. A director with 9 films isn’t always more “successful” than a director with 3; some of the highest-rated directors in cinema have small bodies of work. The leaderboard rewards consistency and volume, not depth, and a user looking for specific kinds of greatness should layer the rating column on top of the film-count sort.</p>
+</section>
+<section id="future-work" class="level1" data-number="7">
+<h1 data-number="7"><span class="header-section-number">7</span> Future work</h1>
+<p>A few directions a future iteration would explore.</p>
+<p>The first is <strong>runtime over time, with a budget split</strong>. The hypothesis is that high-budget films have grown longer over the decades while modest-budget films haven’t — the rise of the 150-minute blockbuster as a cultural phenomenon. A faceted line chart of median runtime by year, split into budget tertiles, would test this directly. The data exists; it just hasn’t been surfaced yet.</p>
+<p>The second is <strong>inflation adjustment</strong>. The <code>priceR</code> package can pull CPI data and convert nominal to real dollars in a few lines of code. Doing this would make the cross-decade comparisons in the Budget vs.&nbsp;Revenue and Top Films tabs more honest, at the cost of some methodological complexity in choosing the right deflator and base year.</p>
+<p>The third is <strong>cast-level analysis to mirror the director leaderboard</strong>. The cast JSON column already exists in the data; the implementation would be a near-copy of the directors logic, scoped to the top billed actors per film. The interesting question is whether actor-level patterns are stronger or weaker than director-level ones, given that actors typically work across more films and more directors over a career.</p>
+<p>A more ambitious extension would replace the current static deployment with a continuous integration pipeline that re-deploys whenever the GitHub repository is updated. That mirrors modern data-application practice and would matter more for a project under active development than for a finished class deliverable.</p>
+</section>
+<section id="conclusion" class="level1" data-number="8">
+<h1 data-number="8"><span class="header-section-number">8</span> Conclusion</h1>
+<p>The TMDB Movie Explorer is a small but genuinely interactive window onto a question everyone has an opinion about and almost no one has the underlying data for: how does film economics actually work? The dashboard doesn’t answer that question definitively — no dashboard could — but it lets a curious user filter, sort, and explore until they’ve built their own answer. Six tabs cover financial returns, genre dynamics, individual film outliers, the critic-audience gap, and the people behind the camera, with consistent theming and finding-stating titles tying the views together.</p>
+<p>The project demonstrates that the gap between “interesting public dataset” and “shareable interactive analysis” is smaller than it sounds, given the right tools and a clear sense of which questions are worth asking. The hardest decisions weren’t technical — they were editorial. Choosing what to highlight, what to mute, and what story to tell with each chart turned out to be the part that mattered most.</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
